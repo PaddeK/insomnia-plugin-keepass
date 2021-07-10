@@ -1,0 +1,47 @@
+{
+    "name": "insomnia-plugin-keepass",
+    "description": "This is a plugin for [insomnia](https://insomnia.rest) which provides access to Keepass and KeepassXC for fetching credentials.",
+    "version": "1.0.0",
+    "license": "MIT",
+    "author": "paddek",
+    "bugs": {
+        "url": "https://github.com/PaddeK/insomnia-plugin-keepass/issues"
+    },
+    "homepage": "https://github.com/PaddeK/insomnia-plugin-keepass#readme",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/PaddeK/insomnia-plugin-keepass.git"
+    },
+    "keywords": [
+        "insomnia",
+        "plugin",
+        "keepass",
+        "keepassxc",
+        "credentials"
+    ],
+    "insomnia": {
+        "name": "keepass",
+        "description": "This plugin provides access to Keepass and KeepassXC for fetching credentials.",
+        "displayName": "Keepass + KeepassXC Credentials",
+        "images": {
+            "icon": "images/logo.png"
+        },
+        "publisher": {
+            "name": "paddek"
+        },
+        "applications": {
+            "designer": "*",
+            "core": "*",
+            "cli": "*"
+        }
+    },
+    "main": "main.js",
+    "files": [
+        "src",
+        "images/logo.png"
+    ],
+    "dependencies": {
+        "node-fetch": "^2.6.1",
+        "tweetnacl": "^1.0.3"
+    }
+}
