@@ -71,7 +71,7 @@ class Utils
     static async removeAssociation (store)
     {
         try {
-             await store.clear();
+            await store.clear();
         } catch (err) {
             throw new Error('Could not unlink database.');
         }

@@ -83,6 +83,10 @@ module.exports.templateTags = [{
                     value: _C.FIELD_PASSWORD
                 }
             ]
+        },
+        {
+            type: 'string',
+            displayName: 'Filter entries by username'
         }
     ],
     actions: [
@@ -121,7 +125,7 @@ module.exports.templateTags = [{
             })
         }
     ],
-    async run (context, which, host, file, url, field) {
+    async run (context, which, host, file, url, field, filter) {
         const {store, renderPurpose} = context;
 
         host = which === _C.KEEPASS ? host || Utils.defaultHost : undefined;
@@ -138,7 +142,7 @@ module.exports.templateTags = [{
 
             await keepass.testAssociate();
 
-            const entries = await keepass.getCredentials(url);
+            const entries = await keepass.getCredentials(url, filter);
 
             if (entries.length) {
                 return entries.pop()[field] || '';
@@ -168,7 +172,7 @@ module.exports.templateTags = [{
                     throw new Error('Database link is invalid. Please try reastablish a link.');
                 }
 
-                const entries = await keepass.getCredentials(url);
+                const entries = await keepass.getCredentials(url, filter);
                 cachedResult = entries.length.toString();
 
                 await store.setItem(hash, cachedResult);

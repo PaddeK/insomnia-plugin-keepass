@@ -72,7 +72,7 @@ class KeepassXC
 
             return this._association;
         } catch (err) {
-             return Promise.reject(new Error(`Associate request failed: ${response.error}`));
+            return Promise.reject(new Error(`Associate request failed: ${response.error}`));
         } finally {
             this._client.disconnect();
         }
@@ -106,12 +106,17 @@ class KeepassXC
 
     /**
      * @param {string|URL} url
+     * @param {string} filter
      * @returns {Promise<null|[]>}
      */
-    async getCredentials (url)
+    async getCredentials (url, filter)
     {
         try {
             this._client.connect();
+
+            function filterLogin(entry) {
+                return entry['login'] == filter;
+            }
 
             if (!await this._verifyKeys()) {
                 return [];
@@ -121,6 +126,10 @@ class KeepassXC
                 url: url.toString(),
                 keys: [this._association.toJSON()]
             });
+
+            if (filter) {
+                return response.entries.filter(filterLogin);
+            }
 
             return response.entries;
         } catch (err) {
