@@ -85,8 +85,14 @@ module.exports.templateTags = [{
             ]
         },
         {
+            type: 'boolean',
+            displayName: 'Filter entries by additional attribute?',
+            defaultValue: '-'
+        },
+        {
             type: 'string',
-            displayName: 'Filter entries by username'
+            displayName: 'Attribute name (KPH:)',
+            hide: args => args[5].value !== true
         }
     ],
     actions: [
@@ -125,7 +131,7 @@ module.exports.templateTags = [{
             })
         }
     ],
-    async run (context, which, host, file, url, field, filter) {
+    async run (context, which, host, file, url, field, filter, filter_attr) {
         const {store, renderPurpose} = context;
 
         host = which === _C.KEEPASS ? host || Utils.defaultHost : undefined;
@@ -142,7 +148,7 @@ module.exports.templateTags = [{
 
             await keepass.testAssociate();
 
-            const entries = await keepass.getCredentials(url, filter);
+            entries = await keepass.getCredentials(url, filter, filter_attr);
 
             if (entries.length) {
                 return entries.pop()[field] || '';
@@ -159,7 +165,7 @@ module.exports.templateTags = [{
             refreshButton.addEventListener('click', onRefresh);
         }
 
-        const hash = createHash('MD5').update(JSON.stringify({which, host, file, url, field})).digest('hex');
+        const hash = createHash('MD5').update(JSON.stringify({which, host, file, url, field, filter_attr})).digest('hex');
         let cachedResult = await store.getItem(hash);
 
         if (cachedResult === null) {
@@ -172,7 +178,7 @@ module.exports.templateTags = [{
                     throw new Error('Database link is invalid. Please try reastablish a link.');
                 }
 
-                const entries = await keepass.getCredentials(url, filter);
+                entries = await keepass.getCredentials(url, filter, filter_attr);
                 cachedResult = entries.length.toString();
 
                 await store.setItem(hash, cachedResult);
