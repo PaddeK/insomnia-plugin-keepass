@@ -107,16 +107,22 @@ class KeepassXC
     /**
      * @param {string|URL} url
      * @param {boolean} filter
-     * @param {string} filter_attr
+     * @param {string} filter_key
+     * @param {string} filter_value
      * @returns {Promise<null|[]>}
      */
-    async getCredentials (url, filter, filter_attr)
+    async getCredentials (url, filter, filter_key, filter_value)
     {
         try {
             this._client.connect();
 
             function filterAttr(entry) {
-                return entry['stringFields'].some(f => JSON.stringify(f).includes(filter_attr));
+                const value = entry[filter_key];
+                if (Array.isArray(value)) {
+                    return value.some(f => JSON.stringify(f).includes(filter_value));
+                } else {
+                    return value === filter_value;
+                }
             }
 
             if (!await this._verifyKeys()) {

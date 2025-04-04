@@ -6,21 +6,28 @@ const
         ASSOCIATION_KEY: 'association',
         FIELD_USERNAME: 'login',
         FIELD_PASSWORD: 'password',
+        FIELD_GROUP: 'group',
+        FIELD_ENTRY_NAME: 'name',
+        FIELD_ADDITIONAL_ATTRIBUTE: 'stringFields',
         KEEPASS: 'keepass',
         KEEPASSXC: 'keepassxc',
         DEFAULT_KEEPASSHTTP_URL: Keepass.DEFAULT_URL.toString(),
         DEFAULT_KEEPASSXC_MACOS: '/Applications/KeePassXC.app',
         MACOS_PROXY: '/Contents/MacOS/keepassxc-proxy',
+        LINUX_PROXY: '/usr/bin/keepassxc-proxy',
         KEEPASS_MAP: {
             keepass: 'Keepass',
             keepassxc: 'KeepassXC'
         },
         FIELD_MAP: {
             login: 'username',
-            password: 'password'
+            password: 'password',
+            group: 'group',
+            name: 'entry name'
         }
     },
     isMacOS = process.platform === 'darwin';
+    isLinux = process.platform.toLowerCase().startsWith('linux');
 
 class Utils
 {
@@ -31,7 +38,12 @@ class Utils
 
     static get defaultFile ()
     {
-        return isMacOS ? `${Utils.constants.DEFAULT_KEEPASSXC_MACOS}${Utils.constants.MACOS_PROXY}` : undefined;
+        if(isMacOS) {
+            return `${Utils.constants.DEFAULT_KEEPASSXC_MACOS}${Utils.constants.MACOS_PROXY}`
+        } else if(isLinux) {
+            return `${Utils.constants.LINUX_PROXY}`
+        }
+        return undefined
     }
 
     static get defaultHost ()

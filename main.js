@@ -4,6 +4,16 @@ const
     _C = {...Utils.constants},
     isMacOS = process.platform === 'darwin',
     isWindows = process.platform === 'win32';
+    isLinux = process.platform.toLowerCase().startsWith('linux');
+
+function buildDisplayText(which, field, url, filter, filter_key, filter_value) {
+    let text = `${_C.KEEPASS_MAP[which]} - ${_C.FIELD_MAP[field]} of Entry url: ${url}`
+    if (filter === 'true') {
+        text = text.concat(
+            ` (filter: '${filter_key}' value: '${filter_value}')`)
+    }
+    return text
+}
 
 module.exports.templateTags = [{
     _error: false,
@@ -12,7 +22,8 @@ module.exports.templateTags = [{
     name: 'keepass',
     displayName: 'Fetch from Keepass',
     description: 'Retrieve value from Keepass / KeepassXC',
-    liveDisplayName: args => `${_C.KEEPASS_MAP[args[0].value]} - ${_C.FIELD_MAP[args[4].value]} of ${args[3].value}`,
+    liveDisplayName: args => buildDisplayText(args[0].value, args[4].value,
+        args[3].value, args[5].value, args[6].value, args[7].value),
     args: [
         {
             type: 'enum',
@@ -39,12 +50,14 @@ module.exports.templateTags = [{
         {
             type: 'file',
             displayName: 'Path to KeepassXC application',
-            value: isMacOS ? '/Applications/' : '',
+            defaultValue: isMacOS ? '/Applications/' : isLinux ? _C.LINUX_PROXY : '',
             itemTypes: ['file'],
             extensions: [].concat(isMacOS ? ['*.app'] : []).concat(isWindows ? ['*.exe'] : []),
             help: () => {
                 if (isMacOS) {
                     return `Leave empty for default value of ${_C.DEFAULT_KEEPASSXC_MACOS}`
+                } else if (isLinux) {
+                    return `Leave empty for default value of ${_C.LINUX_PROXY}`
                 }
                 return 'Full path to keepassxc-proxy executable'
             },
@@ -81,18 +94,54 @@ module.exports.templateTags = [{
                 {
                     displayName: 'Password',
                     value: _C.FIELD_PASSWORD
+                },
+                {
+                    displayName: 'Entry Name',
+                    value: _C.FIELD_ENTRY_NAME
+                },
+                {
+                    displayName: 'Group',
+                    value: _C.FIELD_GROUP
                 }
             ]
         },
         {
             type: 'boolean',
-            displayName: 'Filter entries by additional attribute?',
-            defaultValue: '-'
+            displayName: 'Filter entries by field?',
+            defaultValue: false,
+            hide: args => args[0].value !== _C.KEEPASSXC
+        },
+        {
+            type: 'enum',
+            displayName: 'Filter Field',
+            defaultValue: _C.FIELD_USERNAME,
+            options: [
+                {
+                    displayName: 'Username',
+                    value: _C.FIELD_USERNAME
+                },
+                {
+                    displayName: 'Entry Name',
+                    value: _C.FIELD_ENTRY_NAME
+                },
+                {
+                    displayName: 'Group',
+                    value: _C.FIELD_GROUP
+                },
+                {
+                    displayName: 'Additional Attribute',
+                    description: 'Name format: "KPH: \\<VALUE\\>"',
+                    value: _C.FIELD_ADDITIONAL_ATTRIBUTE
+                }
+            ],
+            hide: args => args[0].value !== _C.KEEPASSXC || args[5].value
+                === false
         },
         {
             type: 'string',
-            displayName: 'Attribute name (KPH:)',
-            hide: args => args[5].value !== true
+            displayName: 'Field value',
+            hide: args => args[0].value !== _C.KEEPASSXC || args[5].value
+                === false
         }
     ],
     actions: [
@@ -131,25 +180,24 @@ module.exports.templateTags = [{
             })
         }
     ],
-    async run (context, which, host, file, url, field, filter, filter_attr) {
+    async run(context, which, host, file, url, field, filter, filter_key,
+        filter_value) {
         const {store, renderPurpose} = context;
-
         host = which === _C.KEEPASS ? host || Utils.defaultHost : undefined;
-        file = which === _C.KEEPASSXC ? (isMacOS ? file || Utils.defaultFile : file) : undefined;
-
+        file = which === _C.KEEPASSXC ? ((isMacOS || isLinux) ? file
+            || Utils.defaultFile : file) : undefined;
         await Utils.handleActionHandler(this, {context, which, host, file, url, field});
 
         if (Utils.isValidUrl(url) === false) {
             throw new Error('Search URL must be a valid URL.');
         }
-
         if (renderPurpose === 'send') {
             const keepass = await Utils.createKeepassInstance({store, which, host, file});
 
             await keepass.testAssociate();
 
-            entries = await keepass.getCredentials(url, filter, filter_attr);
-
+            entries = await keepass.getCredentials(url, filter, filter_key,
+                filter_value);
             if (entries.length) {
                 return entries.pop()[field] || '';
             }
@@ -165,7 +213,16 @@ module.exports.templateTags = [{
             refreshButton.addEventListener('click', onRefresh);
         }
 
-        const hash = createHash('MD5').update(JSON.stringify({which, host, file, url, field, filter_attr})).digest('hex');
+        const hash = createHash('MD5').update(JSON.stringify({
+            which,
+            host,
+            file,
+            url,
+            field,
+            filter,
+            filter_key,
+            filter_value
+        })).digest('hex');
         let cachedResult = await store.getItem(hash);
 
         if (cachedResult === null) {
@@ -175,10 +232,12 @@ module.exports.templateTags = [{
                 const keepass = await Utils.createKeepassInstance({store, which, host, file});
 
                 if (await keepass.testAssociate() === false) {
-                    throw new Error('Database link is invalid. Please try reastablish a link.');
+                    throw new Error(
+                        'Database link is invalid. Please try re-establishing a link.');
                 }
 
-                entries = await keepass.getCredentials(url, filter, filter_attr);
+                entries = await keepass.getCredentials(url, filter, filter_key,
+                    filter_value);
                 cachedResult = entries.length.toString();
 
                 await store.setItem(hash, cachedResult);
@@ -186,7 +245,8 @@ module.exports.templateTags = [{
         }
 
         if (~~cachedResult > 0) {
-            return `${_C.KEEPASS_MAP[which]} - ${_C.FIELD_MAP[field]} of ${url}`;
+            return buildDisplayText(which, field, url, filter, filter_key,
+                filter_value);
         }
 
         throw new Error(`No entry found in database for search url ${url}`);
