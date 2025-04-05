@@ -72,7 +72,7 @@ class KeepassXC
 
             return this._association;
         } catch (err) {
-             return Promise.reject(new Error(`Associate request failed: ${response.error}`));
+            return Promise.reject(new Error(`Associate request failed: ${response.error}`));
         } finally {
             this._client.disconnect();
         }
@@ -106,12 +106,24 @@ class KeepassXC
 
     /**
      * @param {string|URL} url
+     * @param {boolean} filter
+     * @param {string} filter_key
+     * @param {string} filter_value
      * @returns {Promise<null|[]>}
      */
-    async getCredentials (url)
+    async getCredentials (url, filter, filter_key, filter_value)
     {
         try {
             this._client.connect();
+
+            function filterAttr(entry) {
+                const value = entry[filter_key];
+                if (Array.isArray(value)) {
+                    return value.some(f => JSON.stringify(f).includes(filter_value));
+                } else {
+                    return value === filter_value;
+                }
+            }
 
             if (!await this._verifyKeys()) {
                 return [];
@@ -121,6 +133,10 @@ class KeepassXC
                 url: url.toString(),
                 keys: [this._association.toJSON()]
             });
+
+            if (filter) {
+                return response.entries.filter(filterAttr);
+            }
 
             return response.entries;
         } catch (err) {
